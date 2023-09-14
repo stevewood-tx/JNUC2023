@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><extensionAttribute>
+<displayName>Look for Unmigrated Connect Users</displayName>
+<description/>
+<dataType>string</dataType>
+<scriptContentsMac>#!/bin/bash&#13;
+&#13;
+# Search for unmigrated users Extension Attribute&#13;
+# Will return either "No Unmigrated Users" or a list of user names which have not been migrated yet&#13;
+# — SRABBITT May 6, 2020 &#13;
+&#13;
+# MIT License&#13;
+#&#13;
+# Copyright (c) 2020 Jamf Software&#13;
+&#13;
+# Permission is hereby granted, free of charge, to any person obtaining a copy&#13;
+# of this software and associated documentation files (the "Software"), to deal&#13;
+# in the Software without restriction, including without limitation the rights&#13;
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell&#13;
+# copies of the Software, and to permit persons to whom the Software is&#13;
+# furnished to do so, subject to the following conditions:&#13;
+#&#13;
+# The above copyright notice and this permission notice shall be included in all&#13;
+# copies or substantial portions of the Software.&#13;
+#&#13;
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR&#13;
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,&#13;
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE&#13;
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER&#13;
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,&#13;
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE&#13;
+# SOFTWARE.&#13;
+&#13;
+&#13;
+# REQUIRED VARIABLES&#13;
+# Put the name of the management account created for Jamf in a prestage enrollment here&#13;
+jamfManagementAccount=jamfadmin&#13;
+&#13;
+# Declare list of unmigrated users variable&#13;
+listOfUnmigratedUsers=""&#13;
+&#13;
+# Get a list of all users on the machine who have a password.  For each user check to see if &#13;
+# the user is named after the Jamf Management Account or the _mbsetupuser&#13;
+&#13;
+####NOTE: That second thing may not be required; my setup of Parallels might have given the&#13;
+# 	_mbsetupuser a password when it really didn't need one...&#13;
+####NOTE: You may want to modify this to add any additional programatically created&#13;
+#	local admin accounts you create in your environment.&#13;
+&#13;
+for user in $(dscl . list /Users Password | awk '$2 != "*" {print $1}');do&#13;
+	if [[ ("$user" != "$jamfManagementAccount") &amp;&amp; ("$user" != "_mbsetupuser") ]]; then&#13;
+		# Look in the dscl record for the user and see if there is an entry for OIDCProvider&#13;
+		# Jamf Connect will add that to the user record when it is migrated or created&#13;
+		MIGRATESTATUS=($(dscl . -read /Users/$user | grep "OIDCProvider: " | awk {'print $2'}))&#13;
+		# If we didn't get a result, the variable is empty.  Thus that user hasn't been migrated.&#13;
+		if [[ -z $MIGRATESTATUS ]]; then&#13;
+			# Add the user to the list of unmigrated users&#13;
+			listOfUnmigratedUsers+=$(echo "$user ")&#13;
+		fi&#13;
+	fi&#13;
+done&#13;
+&#13;
+# If the listOfUnmigratedUsers is empty, then everyone is a Jamf Connect user or has been migrated.&#13;
+if [[ -z $listOfUnmigratedUsers ]]; then&#13;
+	echo "&lt;result&gt;No Unmigrated Users&lt;/result&gt;"&#13;
+# Else, return a list of short names of unmigrated users.&#13;
+else&#13;
+	echo "&lt;result&gt;$listOfUnmigratedUsers&lt;/result&gt;"&#13;
+fi&#13;
+&#13;
+exit 0</scriptContentsMac>
+</extensionAttribute>

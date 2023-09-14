@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?><extensionAttribute>
+<displayName>Secure Token Users</displayName>
+<description/>
+<dataType>string</dataType>
+<scriptContentsMac>#!/bin/bash&#13;
+&#13;
+# EA to show all SecureToken users&#13;
+# Richard Purves - 27th September 2019&#13;
+&#13;
+# Check current OS version. Report if OS is too old for SecureToken&#13;
+osvers_major=$(/usr/bin/sw_vers -productVersion | awk -F. '{print $1}')&#13;
+osvers_minor=$(/usr/bin/sw_vers -productVersion | awk -F. '{print $2}')&#13;
+osvers_dot_version=$(/usr/bin/sw_vers -productVersion | awk -F. '{print $3}')&#13;
+&#13;
+#currentos=$( sw_vers -productVersion | awk -F "." '{ print $2 }' )&#13;
+&#13;
+if [[ "$osvers_major" -eq 10 &amp;&amp; "$osvers_minor" -lt 13 ]];&#13;
+then&#13;
+	echo "&lt;result&gt;Older macOS version&lt;/result&gt;"&#13;
+	exit&#13;
+fi&#13;
+&#13;
+# Run a check against all the users we can find&#13;
+users=($( dscl . -list /Users | grep -Ev '(_|daemon|nobody|root)' ))&#13;
+&#13;
+for (( loop=0; loop&lt;${#users[@]}; loop++ ));&#13;
+do&#13;
+	result=( "${result[@]}" $( sysadminctl -secureTokenStatus ${users[$loop]} 2&gt;&amp;1 | awk -v user="${users[$loop]}" '{if ($7=="ENABLED") print user}' ) )&#13;
+done&#13;
+&#13;
+[ ${#result[@]} = "0" ] &amp;&amp; echo "&lt;result&gt;No users have a Secure Token&lt;/result&gt;" || echo "&lt;result&gt;${result[@]}&lt;/result&gt;"</scriptContentsMac>
+</extensionAttribute>
